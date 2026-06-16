@@ -21,5 +21,5 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           # All deploy logic lives in scripts/deploy.sh — single source of truth.
-          # Can also be triggered manually on VPS: bash /opt/jd-skills/scripts/deploy.sh
-          script: bash /opt/jd-skills/scripts/deploy.sh
+          # Can also be triggered manually on VPS: bash /home/zed/jd-skills/scripts/deploy.sh
+          script: bash /home/zed/jd-skills/scripts/deploy.sh

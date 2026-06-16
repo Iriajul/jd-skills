@@ -39,11 +39,20 @@ echo "  ║  VPS First-Time Setup                    ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# ── Guard: must have sudo access ─────────────────────────────────────────────
-if ! sudo -n true 2>/dev/null; then
-    error "Please run as a user with sudo access: bash setup-vps.sh"
+# ── Guard: do NOT run as root; must be a sudo-capable user ───────────────────
+if [ "$(id -u)" -eq 0 ]; then
+    error "Do not run this script with 'sudo bash'. Run as your regular user:\n  bash setup-vps.sh"
+fi
+if ! groups | grep -qE '\b(sudo|wheel|admin)\b'; then
+    error "Current user is not in the sudo group. Add with: sudo usermod -aG sudo $USER"
 fi
 SUDO="sudo"
+# Use sudo for docker if the user is not yet in the docker group
+if groups | grep -q docker; then
+    DOCKER="docker"
+else
+    DOCKER="sudo docker"
+fi
 
 # ── 1. System packages ────────────────────────────────────────────────────────
 section "1. System packages"
@@ -65,17 +74,18 @@ if ! command -v docker &>/dev/null; then
     curl -fsSL https://get.docker.com | $SUDO sh
     $SUDO systemctl enable --now docker
     $SUDO usermod -aG docker "$USER"
+    DOCKER="sudo docker"   # group membership only takes effect in next login
     success "Docker installed: $(docker --version)"
 else
     success "Docker already installed: $(docker --version)"
 fi
 
-if ! docker compose version &>/dev/null; then
+if ! $DOCKER compose version &>/dev/null; then
     log "Installing Docker Compose plugin..."
     $SUDO apt-get install -y -qq docker-compose-plugin
     success "Docker Compose installed"
 else
-    success "Docker Compose available: $(docker compose version)"
+    success "Docker Compose available: $($DOCKER compose version)"
 fi
 
 # ── 3. GitHub SSH access ──────────────────────────────────────────────────────
@@ -152,8 +162,8 @@ fi
 # ── 6. Start containers ───────────────────────────────────────────────────────
 section "6. Starting containers"
 log "Building images and starting services (this takes a few minutes)..."
-docker compose -f docker-compose.yml up -d --build
-docker image prune -f
+$DOCKER compose -f docker-compose.yml up -d --build
+$DOCKER image prune -f
 success "All containers started"
 
 # ── 7. Health check ───────────────────────────────────────────────────────────
