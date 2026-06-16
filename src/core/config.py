@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import computed_field, field_validator
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -59,15 +59,9 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str = ""
 
     # ── CORS ─────────────────────────────────────────────────────────────────
-    # Accepts a comma-separated string from env or a proper list.
+    # Must be a JSON array in .env — pydantic-settings v2 parses list fields
+    # as JSON before any validator runs, so use: ["http://localhost:3000"]
     CORS_ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
-
-    @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def _parse_cors(cls, v: str | list) -> list[str]:
-        if isinstance(v, str):
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v
 
 
 @lru_cache
