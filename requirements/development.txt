@@ -1,0 +1,7 @@
+# Development environment — extends base
+-r base.txt
+
+watchfiles               # Fast file watching for uvicorn --reload
+ipython                  # Enhanced interactive shell
+factory-boy              # Test data factories
+Faker                    # Realistic fake data for factories

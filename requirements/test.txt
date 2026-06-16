@@ -1,0 +1,9 @@
+# Test environment — extends base
+-r base.txt
+
+pytest
+pytest-asyncio           # async def test_ support for SQLAlchemy + FastAPI
+pytest-cov               # Coverage reporting
+httpx                    # Async test client for FastAPI (TestClient uses it internally)
+factory-boy              # Test data factories
+Faker                    # Realistic fake data for factories

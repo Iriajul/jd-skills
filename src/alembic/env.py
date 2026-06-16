@@ -1,0 +1,59 @@
+import asyncio
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from core.config import settings
+from core.database import Base
+
+# ── Import all models here so Alembic can detect schema changes ───────────────
+# Add each new app's models module as you build them:
+# from apps.users.models import *   # noqa: F401, F403
+# from apps.jobs.models import *    # noqa: F401, F403
+# from apps.resumes.models import * # noqa: F401, F403
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+config = context.config
+target_metadata = Base.metadata
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+
+def run_migrations_offline() -> None:
+    """Run migrations without a live DB connection (generates SQL script)."""
+    context.configure(
+        url=settings.SYNC_DATABASE_URL,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_migrations_online() -> None:
+    """Run migrations against a live async connection."""
+    connectable = create_async_engine(
+        settings.DATABASE_URL,
+        poolclass=pool.NullPool,  # don't pool — migrations are one-shot
+    )
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+    await connectable.dispose()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    asyncio.run(run_migrations_online())

@@ -1,0 +1,43 @@
+# ─── Framework ────────────────────────────────────────────────────────────────
+fastapi
+uvicorn[standard]        # ASGI server with websockets + hot-reload support
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+sqlalchemy[asyncio]      # Async ORM
+asyncpg                  # Async PostgreSQL driver (used by SQLAlchemy async engine)
+psycopg2                 # Sync driver — used by Alembic and Celery result backend
+alembic                  # Schema migrations
+
+# ─── Auth ─────────────────────────────────────────────────────────────────────
+python-jose[cryptography]  # JWT creation + verification
+passlib[bcrypt]            # Password hashing
+
+# ─── Task Queue ───────────────────────────────────────────────────────────────
+celery[redis]            # Celery with Redis transport
+redis                    # Python Redis client
+celery-redbeat           # Redis-backed periodic task scheduler (replaces django-celery-beat)
+
+# ─── AI / LLM Core ────────────────────────────────────────────────────────────
+langchain                # Base abstractions and chains
+langgraph                # Stateful multi-agent orchestration (state machine)
+langchain-openai          # OpenAI GPT-4o integration
+langchain-community      # Community integrations (document loaders, tools)
+langchain-qdrant         # LangChain vector store adapter for Qdrant
+
+# ─── Vector Database ──────────────────────────────────────────────────────────
+qdrant-client            # Qdrant Python SDK
+
+# ─── Job Discovery ────────────────────────────────────────────────────────────
+tavily-python            # Tavily Search API — primary job discovery tool
+
+# ─── Validation / Serialization ───────────────────────────────────────────────
+pydantic>=2.0
+pydantic-settings        # BaseSettings for env-driven config
+
+# ─── Document Processing ──────────────────────────────────────────────────────
+python-multipart         # Multipart form / file upload support (FastAPI requirement)
+pypdf                    # PDF text extraction for resume parsing
+
+# ─── Utilities ────────────────────────────────────────────────────────────────
+httpx                    # Async HTTP client for external API calls
+email-validator          # Pydantic email field validation

@@ -1,0 +1,5 @@
+# Production environment — extends base
+-r base.txt
+
+gunicorn                 # Process manager; runs uvicorn workers in production
+sentry-sdk[fastapi]      # Error tracking and performance monitoring

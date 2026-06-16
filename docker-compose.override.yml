@@ -1,0 +1,70 @@
+# =============================================================================
+# Local Development Override
+# =============================================================================
+# Docker Compose auto-merges this file on top of docker-compose.yml when you
+# run: docker compose up
+#
+# Production (VPS): docker compose -f docker-compose.yml up -d
+# Local dev:        docker compose up          ← picks up this file automatically
+# =============================================================================
+
+version: '3.9'
+
+services:
+
+  # ── FastAPI — hot reload ───────────────────────────────────────────────────
+  web:
+    build:
+      args:
+        REQUIREMENTS_FILE: development.txt   # installs watchfiles, ipython, etc.
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./src:/app/src                       # live source mount — no rebuild needed
+    ports:
+      - "8000:8000"                          # direct access, bypassing Nginx locally
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+
+  # ── Expose DB port for local tools (TablePlus, DBeaver, psql) ─────────────
+  db:
+    ports:
+      - "5432:5432"
+
+  # ── Expose Redis for local inspection (redis-cli, RedisInsight) ───────────
+  redis:
+    ports:
+      - "6379:6379"
+
+  # ── Celery general worker — debug log, fewer workers locally ──────────────
+  celery-worker:
+    build:
+      args:
+        REQUIREMENTS_FILE: development.txt
+    command: >
+      celery -A workers.celery_app worker
+      -Q default,job_discovery
+      --loglevel=DEBUG
+      --concurrency=2
+    volumes:
+      - ./src:/app/src
+
+  # ── Celery AI worker — single process locally (LLM calls are heavy) ───────
+  celery-ai-worker:
+    build:
+      args:
+        REQUIREMENTS_FILE: development.txt
+    command: >
+      celery -A workers.celery_app worker
+      -Q ai_tasks
+      --loglevel=DEBUG
+      --concurrency=1
+    volumes:
+      - ./src:/app/src
+
+  # ── Celery Beat ───────────────────────────────────────────────────────────
+  celery-beat:
+    build:
+      args:
+        REQUIREMENTS_FILE: development.txt
+    volumes:
+      - ./src:/app/src
