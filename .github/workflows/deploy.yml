@@ -1,7 +1,5 @@
 name: Deploy to VPS
 
-# Triggers only when code is pushed (or PR merged) into main.
-# Local branches, PRs in review, and WIP pushes do NOT trigger a deploy.
 on:
   push:
     branches: [main]
@@ -12,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Verify the commit that triggered this run ───────────────────────
-      - name: Checkout (for context only — actual code is pulled on VPS)
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. SSH into VPS and deploy ────────────────────────────────────────
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -24,24 +20,6 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          # Each line is a separate shell command. set -e stops on first error.
-          script: |
-            set -e
-
-            echo "── Pulling latest code ──"
-            cd /opt/jd-skills
-            git pull origin main
-
-            echo "── Rebuilding and restarting containers ──"
-            docker compose -f docker-compose.yml up -d --build
-
-            echo "── Removing stale images ──"
-            docker image prune -f
-
-            echo "── Health check ──"
-            sleep 8
-            curl -sf http://localhost:8080/health \
-              && echo "✓ API is healthy" \
-              || (echo "✗ Health check failed" && exit 1)
-
-            echo "── Deploy complete ──"
+          # All deploy logic lives in scripts/deploy.sh — single source of truth.
+          # Can also be triggered manually on VPS: bash /opt/jd-skills/scripts/deploy.sh
+          script: bash /opt/jd-skills/scripts/deploy.sh
