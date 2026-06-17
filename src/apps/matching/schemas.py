@@ -14,50 +14,49 @@ class TailorRequest(BaseModel):
     job_description: str = Field(..., min_length=20)
 
 
-class ExperienceItem(BaseModel):
-    title: str = Field(default="", description="Job title")
-    company: str = Field(default="", description="Employer name")
-    location: str = Field(default="", description="City / remote")
-    dates: str = Field(default="", description="e.g. 'Jan 2022 – Present'")
-    bullets: list[str] = Field(
-        default_factory=list, description="Achievement bullets, rephrased with JD terminology"
-    )
+# ── In-place .docx tailoring model ──────────────────────────────────────────────
+# We never rebuild the resume. We list the original document's paragraphs, let the
+# LLM reword only the ones worth changing, and write those words back into the
+# original file — so formatting (fonts, sizes, bullets, layout) is untouched.
+
+class ParagraphChange(BaseModel):
+    """A single paragraph the tailoring changed."""
+
+    index: int = Field(..., description="Absolute paragraph position in the document")
+    original: str = Field(default="", description="The original wording")
+    tailored: str = Field(..., description="The reworded text (user-editable)")
 
 
-class EducationItem(BaseModel):
-    degree: str = Field(default="")
-    institution: str = Field(default="")
-    dates: str = Field(default="")
+class TailoredDocx(BaseModel):
+    """The set of reworded paragraphs + the keywords woven in. The full document
+    is reconstructed by applying these onto the stored original .docx."""
 
-
-class TailoredResume(BaseModel):
-    """An ATS-optimized resume reconstructed from the candidate's real content."""
-
-    name: str = Field(default="")
-    email: str = Field(default="")
-    phone: str = Field(default="")
-    location: str = Field(default="")
-    links: list[str] = Field(default_factory=list, description="LinkedIn, GitHub, portfolio URLs")
-    summary: str = Field(default="", description="Professional summary aligned to the job")
-    skills: list[str] = Field(default_factory=list)
-    experience: list[ExperienceItem] = Field(default_factory=list)
-    education: list[EducationItem] = Field(default_factory=list)
-    certifications: list[str] = Field(default_factory=list)
+    paragraphs: list[ParagraphChange] = Field(default_factory=list)
     injected_keywords: list[str] = Field(
         default_factory=list,
         description="JD keywords woven into the resume, for the user to verify",
     )
 
 
+class DocxEdit(BaseModel):
+    index: int
+    text: str
+
+
+class DocxRenderRequest(BaseModel):
+    resume_id: uuid.UUID
+    edits: list[DocxEdit] = Field(default_factory=list)
+
+
 class SavedTailoredCreate(BaseModel):
     resume_id: uuid.UUID
     title: str = Field(..., min_length=1, max_length=255)
-    content: TailoredResume
+    content: TailoredDocx
 
 
 class SavedTailoredUpdate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    content: TailoredResume
+    content: TailoredDocx
 
 
 class SavedTailoredListItem(BaseModel):
@@ -72,7 +71,7 @@ class SavedTailoredListItem(BaseModel):
 
 
 class SavedTailoredOut(SavedTailoredListItem):
-    content: TailoredResume
+    content: TailoredDocx
 
 
 class MatchResult(BaseModel):

@@ -5,9 +5,9 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Check, FileEdit, Sparkles, Target, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { matchApi, resumeApi, type MatchResult, type Resume, type TailoredResume } from "@/lib/api";
+import { matchApi, resumeApi, type MatchResult, type Resume, type TailoredDocx } from "@/lib/api";
 
-// react-pdf is browser-only — load the panel client-side without SSR.
+// docx-preview renders in the browser — load the panel client-side without SSR.
 const TailoredResumePanel = dynamic(() => import("@/components/TailoredResumePanel"), {
   ssr: false,
   loading: () => (
@@ -26,7 +26,7 @@ export default function MatchPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<MatchResult | null>(null);
   const [tailorState, setTailorState] = useState<TailorState>("idle");
-  const [tailored, setTailored] = useState<TailoredResume | null>(null);
+  const [tailored, setTailored] = useState<TailoredDocx | null>(null);
 
   useEffect(() => {
     resumeApi.list().then((list) => {
@@ -70,7 +70,7 @@ export default function MatchPage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full">
       {/* Page header */}
       <div className="border-b border-[#111111] pb-6 mb-10">
         <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#CC0000] mb-1">◼ ATS Analysis</p>
@@ -93,6 +93,8 @@ export default function MatchPage() {
         </div>
       ) : (
         <>
+          {/* Inputs + score stay readable width; the tailored panel below goes full width */}
+          <div className="max-w-3xl">
           {/* Resume selector */}
           <label className="block mb-6">
             <span className="font-mono text-[10px] uppercase tracking-widest text-[#737373]">Resume</span>
@@ -199,25 +201,35 @@ export default function MatchPage() {
               {/* Tailor CTA */}
               {!tailored && (
                 <div className="border border-[#111111] mt-10 p-6 text-center">
-                  <p className="font-body text-sm text-[#525252] mb-4">
-                    Let the AI rewrite your resume for this job — keeping your real experience,
-                    weaving in the missing keywords, formatted to pass ATS screens.
-                  </p>
-                  <Button
-                    onClick={handleTailor}
-                    loading={tailorState === "tailoring"}
-                    disabled={tailorState === "tailoring"}
-                    size="lg"
-                  >
-                    <FileEdit className="h-3.5 w-3.5 mr-2" strokeWidth={1.5} />
-                    Tailor My Resume for This Job
-                  </Button>
+                  {resumes.find((r) => r.id === resumeId)?.file_format === "docx" ? (
+                    <>
+                      <p className="font-body text-sm text-[#525252] mb-4">
+                        Rewrite the wording for this job — your document&apos;s exact formatting stays
+                        untouched, and you can edit every change before downloading.
+                      </p>
+                      <Button
+                        onClick={handleTailor}
+                        loading={tailorState === "tailoring"}
+                        disabled={tailorState === "tailoring"}
+                        size="lg"
+                      >
+                        <FileEdit className="h-3.5 w-3.5 mr-2" strokeWidth={1.5} />
+                        Tailor My Resume for This Job
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="font-body text-sm text-[#525252]">
+                      Tailoring needs a <strong>.docx</strong> resume so your exact formatting is preserved.
+                      This resume is a PDF — <Link href="/dashboard/upload" className="underline">upload a .docx</Link> to tailor it.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
           )}
+          </div>
 
-          {/* Tailored resume editor + preview + save + download */}
+          {/* Tailored resume editor + preview + save + download (full width) */}
           {tailored && <TailoredResumePanel resume={tailored} resumeId={resumeId} />}
         </>
       )}

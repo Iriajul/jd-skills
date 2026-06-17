@@ -37,6 +37,7 @@ pydantic-settings        # BaseSettings for env-driven config
 # ─── Document Processing ──────────────────────────────────────────────────────
 python-multipart         # Multipart form / file upload support (FastAPI requirement)
 pypdf                    # PDF text extraction for resume parsing
+python-docx              # Read/edit .docx in place — tailoring preserves original formatting
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
 httpx                    # Async HTTP client for external API calls

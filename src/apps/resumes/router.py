@@ -12,6 +12,18 @@ router = APIRouter()
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
+_DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def _detect_format(file: UploadFile) -> str | None:
+    """Return 'docx' or 'pdf' from content type / filename, else None."""
+    name = (file.filename or "").lower()
+    if file.content_type == _DOCX_TYPE or name.endswith(".docx"):
+        return "docx"
+    if file.content_type == "application/pdf" or name.endswith(".pdf"):
+        return "pdf"
+    return None
+
 
 @router.post("/upload", response_model=ResumeOut, status_code=status.HTTP_201_CREATED)
 async def upload_resume(
@@ -19,10 +31,11 @@ async def upload_resume(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if file.content_type != "application/pdf":
+    file_format = _detect_format(file)
+    if file_format is None:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only PDF files are accepted",
+            detail="Only .docx and .pdf files are accepted. Upload .docx to tailor resumes.",
         )
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
@@ -32,7 +45,7 @@ async def upload_resume(
         )
     try:
         resume = await service.create_resume(
-            db, current_user.id, file.filename or "resume.pdf", content
+            db, current_user.id, file.filename or f"resume.{file_format}", content, file_format
         )
     except ValueError as exc:
         raise HTTPException(

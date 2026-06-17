@@ -82,18 +82,32 @@ export const matchApi = {
     }),
 
   tailor: (body: { resume_id: string; job_description: string }) =>
-    request<TailoredResume>("/api/v1/matching/tailor", {
+    request<TailoredDocx>("/api/v1/matching/tailor", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
-  saveTailored: (body: { resume_id: string; title: string; content: TailoredResume }) =>
+  // Returns the tailored .docx as a Blob (original formatting + edited words).
+  renderDocx: async (body: { resume_id: string; edits: DocxEdit[] }): Promise<Blob> => {
+    const res = await fetch(`${BASE}/api/v1/matching/render`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? "Render failed");
+    return res.blob();
+  },
+
+  saveTailored: (body: { resume_id: string; title: string; content: TailoredDocx }) =>
     request<SavedTailored>("/api/v1/matching/saved", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
-  updateSaved: (id: string, body: { title: string; content: TailoredResume }) =>
+  updateSaved: (id: string, body: { title: string; content: TailoredDocx }) =>
     request<SavedTailored>(`/api/v1/matching/saved/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
@@ -116,32 +130,20 @@ export interface MatchResult {
   suggestions: string[];
 }
 
-export interface ExperienceItem {
-  title: string;
-  company: string;
-  location: string;
-  dates: string;
-  bullets: string[];
+export interface ParagraphChange {
+  index: number;
+  original: string;
+  tailored: string;
 }
 
-export interface EducationItem {
-  degree: string;
-  institution: string;
-  dates: string;
-}
-
-export interface TailoredResume {
-  name: string;
-  email: string;
-  phone: string;
-  location: string;
-  links: string[];
-  summary: string;
-  skills: string[];
-  experience: ExperienceItem[];
-  education: EducationItem[];
-  certifications: string[];
+export interface TailoredDocx {
+  paragraphs: ParagraphChange[];
   injected_keywords: string[];
+}
+
+export interface DocxEdit {
+  index: number;
+  text: string;
 }
 
 export interface SavedTailoredListItem {
@@ -152,7 +154,7 @@ export interface SavedTailoredListItem {
 }
 
 export interface SavedTailored extends SavedTailoredListItem {
-  content: TailoredResume;
+  content: TailoredDocx;
 }
 
 export interface User {
@@ -171,6 +173,7 @@ export interface Resume {
   filename: string;
   chunk_count: number;
   status: "processing" | "ready" | "failed";
+  file_format: "docx" | "pdf" | null;
   created_at: string;
 }
 

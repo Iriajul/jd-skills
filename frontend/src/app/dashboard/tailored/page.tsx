@@ -49,7 +49,7 @@ export default function SavedTailoredPage() {
   // ── Detail view ──
   if (selected) {
     return (
-      <div className="max-w-5xl">
+      <div className="w-full">
         <button onClick={() => setSelected(null)}
           className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#737373] hover:text-[#111111] mb-6">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to saved
@@ -61,6 +61,7 @@ export default function SavedTailoredPage() {
         {/* savedId → edit in place (PUT) and re-download */}
         <TailoredResumePanel
           resume={selected.content}
+          resumeId={selected.resume_id}
           savedId={selected.id}
           savedTitle={selected.title}
           onSaved={load}

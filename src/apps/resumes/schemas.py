@@ -12,6 +12,7 @@ class ResumeOut(BaseModel):
     filename: str
     chunk_count: int
     status: ResumeStatus
+    file_format: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

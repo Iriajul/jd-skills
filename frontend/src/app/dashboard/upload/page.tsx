@@ -18,7 +18,9 @@ export default function UploadPage() {
 
   const pickFile = useCallback((f: File | null | undefined) => {
     if (!f) return;
-    if (f.type !== "application/pdf") { setError("Only PDF files are accepted."); return; }
+    const name = f.name.toLowerCase();
+    const ok = name.endsWith(".docx") || name.endsWith(".pdf");
+    if (!ok) { setError("Upload a .docx (recommended — lets you tailor) or .pdf."); return; }
     if (f.size > 5 * 1024 * 1024) { setError("File must be under 5 MB."); return; }
     setFile(f);
     setError("");
@@ -52,7 +54,7 @@ export default function UploadPage() {
         <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#CC0000] mb-1">◼ New Document</p>
         <h2 className="font-serif text-4xl font-black">Upload Resume</h2>
         <p className="font-body text-sm text-[#737373] mt-3">
-          PDF only · max 5 MB · text must be selectable (not a scanned image)
+          .docx (recommended) or .pdf · max 5 MB · upload .docx to tailor with exact formatting
         </p>
       </div>
 
@@ -87,13 +89,13 @@ export default function UploadPage() {
               <Upload className="h-8 w-8 text-[#737373]" strokeWidth={1} />
             </div>
             <div>
-              <p className="font-body text-base text-[#525252]">Drag & drop your PDF here</p>
+              <p className="font-body text-base text-[#525252]">Drag & drop your .docx or .pdf here</p>
               <p className="font-mono text-[10px] uppercase tracking-widest text-[#737373] mt-1">or</p>
             </div>
             <label className="cursor-pointer">
               <input
                 type="file"
-                accept=".pdf,application/pdf"
+                accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="sr-only"
                 onChange={(e) => pickFile(e.target.files?.[0])}
               />

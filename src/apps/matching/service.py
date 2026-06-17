@@ -1,13 +1,20 @@
+import asyncio
 import uuid
 
 from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.matching import docx_tailor
 from apps.matching.models import TailoredResumeRecord
-from apps.matching.schemas import MatchResult, TailoredResume
+from apps.matching.schemas import MatchResult, ParagraphChange, TailoredDocx
 from apps.resumes.service import get_resume
 from core.config import settings
+
+
+class NotDocxError(Exception):
+    """Raised when a resume can't be tailored because it isn't a .docx upload."""
 
 # Cap the resume text we send to the model — keeps latency/cost bounded.
 _MAX_RESUME_CHARS = 12000
@@ -28,26 +35,41 @@ _USER_TEMPLATE = (
 
 _TAILOR_SYSTEM_PROMPT = (
     "You are an expert resume writer specializing in ATS (Applicant Tracking System) "
-    "optimization. Rewrite the candidate's resume so it ranks well for the target job.\n\n"
-    "STRICT RULES — never break these:\n"
-    "1. NEVER invent employers, job titles, dates, degrees, or experience the resume "
-    "does not contain. Fabrication is forbidden.\n"
-    "2. You MAY rephrase existing bullets using the job description's terminology and "
-    "keywords, reorder content to surface the most relevant experience first, and write "
-    "a sharper professional summary.\n"
-    "3. Only add a skill to the skills list if the resume already demonstrates it. Do not "
-    "add skills the candidate has never shown.\n"
-    "4. Use standard ATS section names and keep everything single-column and plain.\n"
-    "5. Extract the candidate's real name and contact details from the resume verbatim.\n"
+    "optimization. You are given a candidate's resume as a numbered list of paragraphs "
+    "(exactly as they appear in their document) and a target job description.\n\n"
+    "Your task: choose ONLY the paragraphs whose WORDING should change to better match "
+    "the job, and rewrite just those. Return them by their original number.\n\n"
+    "STRICT RULES:\n"
+    "1. NEVER invent employers, job titles, dates, degrees, projects, or experience. "
+    "Fabrication is forbidden. Rephrase only what is already there.\n"
+    "2. DO NOT touch the candidate's name, contact info, section headings, company "
+    "names, job titles, dates, or URLs. Leave those paragraphs out of your response.\n"
+    "3. DO rephrase summary/objective sentences and achievement bullets to use the job "
+    "description's terminology and weave in relevant keywords the candidate genuinely "
+    "supports. You may add job-relevant keywords to a skills line ONLY if the resume "
+    "already demonstrates them.\n"
+    "4. Keep each rewritten paragraph roughly the same length as the original so the "
+    "document layout is not disturbed.\n"
+    "5. Only include a paragraph in 'edits' if you actually changed its wording.\n"
     "In 'injected_keywords', list the job-description keywords you wove in so the user "
     "can verify each one is truthful."
 )
 
 _TAILOR_USER_TEMPLATE = (
     "=== TARGET JOB DESCRIPTION ===\n{job_description}\n\n"
-    "=== ORIGINAL RESUME ===\n{resume_text}\n\n"
-    "Produce the ATS-optimized resume."
+    "=== RESUME PARAGRAPHS (numbered) ===\n{paragraphs}\n\n"
+    "Return the reworded paragraphs by number."
 )
+
+
+class _ParaEdit(BaseModel):
+    index: int = Field(..., description="The paragraph number to rewrite")
+    new_text: str = Field(..., description="The reworded paragraph text")
+
+
+class _TailorOut(BaseModel):
+    edits: list[_ParaEdit] = Field(default_factory=list)
+    injected_keywords: list[str] = Field(default_factory=list)
 
 
 def _llm() -> ChatOpenAI:
@@ -92,28 +114,56 @@ async def tailor_resume(
     resume_id: uuid.UUID,
     user_id: uuid.UUID,
     job_description: str,
-) -> TailoredResume | None:
-    """Rewrite the resume into an ATS-optimized form, or None if not owned by the user."""
+) -> TailoredDocx | None:
+    """Reword the .docx resume for the job. None if not owned; NotDocxError if not a .docx."""
     resume = await get_resume(db, resume_id, user_id)
     if resume is None:
         return None
+    if resume.file_format != "docx" or not resume.file_data:
+        raise NotDocxError()
 
-    resume_text = resume.raw_text[:_MAX_RESUME_CHARS]
+    paragraphs = docx_tailor.list_paragraphs(resume.file_data)
+    by_index = {i: text for i, text in paragraphs}
+    numbered = "\n".join(f"[{i}] {text}" for i, text in paragraphs)
 
-    structured_llm = _llm().with_structured_output(TailoredResume)
-    result: TailoredResume = await structured_llm.ainvoke(
+    structured_llm = _llm().with_structured_output(_TailorOut)
+    out: _TailorOut = await structured_llm.ainvoke(
         [
             ("system", _TAILOR_SYSTEM_PROMPT),
             (
                 "user",
                 _TAILOR_USER_TEMPLATE.format(
                     job_description=job_description.strip(),
-                    resume_text=resume_text,
+                    paragraphs=numbered[:_MAX_RESUME_CHARS],
                 ),
             ),
         ]
     )
-    return result
+
+    changes = [
+        ParagraphChange(index=e.index, original=by_index.get(e.index, ""), tailored=e.new_text)
+        for e in out.edits
+        if e.index in by_index and e.new_text.strip() and e.new_text.strip() != by_index[e.index]
+    ]
+    return TailoredDocx(paragraphs=changes, injected_keywords=out.injected_keywords)
+
+
+async def render_tailored_docx(
+    db: AsyncSession,
+    resume_id: uuid.UUID,
+    user_id: uuid.UUID,
+    edits: dict[int, str],
+) -> tuple[bytes, str] | None:
+    """Apply edits onto the original .docx; return (bytes, download_filename) or None."""
+    resume = await get_resume(db, resume_id, user_id)
+    if resume is None:
+        return None
+    if resume.file_format != "docx" or not resume.file_data:
+        raise NotDocxError()
+
+    data = await asyncio.to_thread(docx_tailor.render, resume.file_data, edits)
+    base = (resume.filename or "resume").rsplit(".", 1)[0]
+    return data, f"{base}_tailored.docx"
 
 
 # ── Saved tailored resumes ──────────────────────────────────────────────────────
@@ -122,7 +172,7 @@ async def save_tailored(
     user_id: uuid.UUID,
     resume_id: uuid.UUID,
     title: str,
-    content: TailoredResume,
+    content: TailoredDocx,
 ) -> TailoredResumeRecord | None:
     """Persist an (edited) tailored resume. Returns None if the source resume isn't the user's."""
     source = await get_resume(db, resume_id, user_id)
@@ -168,7 +218,7 @@ async def update_tailored(
     db: AsyncSession,
     record: TailoredResumeRecord,
     title: str,
-    content: TailoredResume,
+    content: TailoredDocx,
 ) -> TailoredResumeRecord:
     record.title = title.strip()
     record.content = content.model_dump()

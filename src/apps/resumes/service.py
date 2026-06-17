@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.resumes.embedder import delete_resume_chunks, embed_resume_chunks
 from apps.resumes.models import Resume, ResumeStatus
-from apps.resumes.parser import chunk_text, extract_text_from_pdf
+from apps.resumes.parser import chunk_text, extract_text_from_docx, extract_text_from_pdf
 
 
 async def create_resume(
@@ -14,12 +14,16 @@ async def create_resume(
     user_id: uuid.UUID,
     filename: str,
     content: bytes,
+    file_format: str,
 ) -> Resume:
-    # Run CPU-bound PDF parsing in a thread so the event loop stays free
-    raw_text = await asyncio.to_thread(extract_text_from_pdf, content)
+    # Run CPU-bound parsing in a thread so the event loop stays free
+    if file_format == "docx":
+        raw_text = await asyncio.to_thread(extract_text_from_docx, content)
+    else:
+        raw_text = await asyncio.to_thread(extract_text_from_pdf, content)
     if not raw_text:
         raise ValueError(
-            "No text could be extracted. Make sure the PDF is not a scanned image."
+            "No text could be extracted. Make sure the file is not a scanned image."
         )
 
     chunks = chunk_text(raw_text)
@@ -30,6 +34,8 @@ async def create_resume(
         raw_text=raw_text,
         chunk_count=0,
         status=ResumeStatus.processing,
+        file_format=file_format,
+        file_data=content,
     )
     db.add(resume)
     await db.flush()  # get the ID before Qdrant upload

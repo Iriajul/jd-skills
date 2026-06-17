@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col">
       <Header authenticated userName={user?.full_name} />
-      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 py-10">
+      <main className="flex-1 max-w-screen-2xl mx-auto w-full px-4 py-10">
         {children}
       </main>
       <footer className="border-t border-[#111111] px-4 py-4">
