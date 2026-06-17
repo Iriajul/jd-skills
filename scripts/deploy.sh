@@ -30,6 +30,12 @@ echo "── Deploy started: $TIMESTAMP ──"
 cd "$DEPLOY_DIR" || error "Deploy directory not found: $DEPLOY_DIR"
 log "Working directory: $DEPLOY_DIR"
 
+# Compose wrapper. --env-file makes ${DB_PASSWORD} etc. in docker-compose.yml
+# resolve from src/.env (the app's env file). Without it, Compose has no source
+# for those vars and silently falls back to defaults (e.g. POSTGRES_PASSWORD
+# would become "postgres"), causing DB auth failures.
+COMPOSE="docker compose --env-file ./src/.env -f docker-compose.yml"
+
 # ── 2. Pull latest code ────────────────────────────────────────────────────
 log "Pulling latest code from main..."
 git pull origin main
@@ -37,13 +43,13 @@ success "Code updated"
 
 # ── 3. Rebuild and restart containers ─────────────────────────────────────
 log "Rebuilding images and restarting services..."
-docker compose -f docker-compose.yml up -d --build
+$COMPOSE up -d --build
 success "Containers restarted"
 
 # ── 3b. Apply database migrations ──────────────────────────────────────────
 # Runs in a one-off container that waits for the healthy db (depends_on).
 log "Applying database migrations..."
-docker compose -f docker-compose.yml run --rm web alembic upgrade head
+$COMPOSE run --rm web alembic upgrade head
 success "Migrations applied"
 
 # ── 4. Clean up stale images (free disk space) ─────────────────────────────
@@ -60,7 +66,7 @@ if curl -sf http://localhost:8080/health > /dev/null; then
 else
     echo ""
     echo "Health check failed. Last 30 lines of web logs:"
-    docker compose -f docker-compose.yml logs --tail=30 web
+    $COMPOSE logs --tail=30 web
     error "Deploy failed"
 fi
 

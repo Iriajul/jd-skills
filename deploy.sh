@@ -53,4 +53,4 @@ success "Pushed to main."
 
 echo ""
 success "GitHub Actions is now deploying to the VPS."
-echo "  Watch:   gh run watch        (or the Actions tab on GitHub)"
+echo "  Watch: https://github.com/Iriajul/jd-skills/actions"
