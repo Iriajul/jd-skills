@@ -40,6 +40,12 @@ log "Rebuilding images and restarting services..."
 docker compose -f docker-compose.yml up -d --build
 success "Containers restarted"
 
+# ── 3b. Apply database migrations ──────────────────────────────────────────
+# Runs in a one-off container that waits for the healthy db (depends_on).
+log "Applying database migrations..."
+docker compose -f docker-compose.yml run --rm web alembic upgrade head
+success "Migrations applied"
+
 # ── 4. Clean up stale images (free disk space) ─────────────────────────────
 log "Pruning unused images..."
 docker image prune -f

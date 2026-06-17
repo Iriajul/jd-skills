@@ -1,6 +1,7 @@
+import uuid
 from typing import AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,10 +24,21 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> str:
-    """Validate Bearer token → return user UUID string.
-
-    Each app builds its own get_current_user dependency on top of this once the
-    User model exists. This primitive stays here so it can be imported without
-    triggering circular imports through the users app.
-    """
+    """Validate Bearer token → return user UUID string."""
     return verify_access_token(credentials.credentials)
+
+
+async def get_current_user(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resolve the token subject to a live User row."""
+    from apps.users.service import get_user_by_id  # local import avoids circular dep
+
+    user = await get_user_by_id(db, uuid.UUID(user_id))
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or account disabled",
+        )
+    return user

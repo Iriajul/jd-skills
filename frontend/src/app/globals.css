@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=block');
+@import "tailwindcss";
+
+:root {
+  --ink:        #111111;
+  --paper:      #F9F9F7;
+  --muted:      #E5E5E0;
+  --accent:     #CC0000;
+  --neutral-100: #F5F5F5;
+  --neutral-200: #E5E5E5;
+  --neutral-500: #737373;
+  --neutral-600: #525252;
+}
+
+/* ── Zero radius everywhere ──────────────────────────────────────── */
+*, *::before, *::after {
+  border-radius: 0 !important;
+  box-sizing: border-box;
+}
+
+/* ── Newsprint body ──────────────────────────────────────────────── */
+html { height: 100%; }
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: 'Lora', Georgia, serif;
+  min-height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23111111' fill-opacity='0.04' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* ── Font utilities ──────────────────────────────────────────────── */
+.font-serif { font-family: 'Playfair Display', 'Times New Roman', serif; }
+.font-body  { font-family: 'Lora', Georgia, serif; }
+.font-sans  { font-family: 'Inter', 'Helvetica Neue', sans-serif; }
+.font-mono  { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+
+/* ── Hard shadow hover ───────────────────────────────────────────── */
+.hard-shadow-hover { transition: box-shadow 0.15s ease-out, transform 0.15s ease-out; }
+.hard-shadow-hover:hover {
+  box-shadow: 4px 4px 0px 0px #111111;
+  transform: translate(-2px, -2px);
+}
+
+/* ── Newsprint texture overlay ───────────────────────────────────── */
+.newsprint-texture { position: relative; }
+.newsprint-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(0deg, transparent 98%, rgba(0,0,0,0.02) 100%),
+    linear-gradient(90deg, transparent 98%, rgba(0,0,0,0.02) 100%);
+  background-size: 3px 3px;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+/* ── Newsprint input (bottom-border only) ────────────────────────── */
+.input-np {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  padding: 8px 0;
+  width: 100%;
+  outline: none;
+  color: var(--ink);
+  transition: background 0.15s;
+}
+.input-np:focus { background: #F0F0F0; padding-left: 6px; padding-right: 6px; }
+.input-np::placeholder { color: var(--neutral-500); }

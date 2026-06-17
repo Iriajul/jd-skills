@@ -4,6 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from apps.matching.router import router as matching_router
+from apps.resumes.router import router as resumes_router
+from apps.users.router import router as users_router
 from core.config import settings
 from core.database import engine
 
@@ -40,17 +43,11 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-# Register each app router here as you build them:
-#
-# from apps.users.router import router as users_router
-# from apps.jobs.router import router as jobs_router
-# from apps.resumes.router import router as resumes_router
-# from apps.agents.router import router as agents_router
-#
-# app.include_router(users_router,   prefix="/api/v1/users",   tags=["Users"])
-# app.include_router(jobs_router,    prefix="/api/v1/jobs",    tags=["Jobs"])
-# app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["Resumes"])
-# app.include_router(agents_router,  prefix="/api/v1/agents",  tags=["Agents"])
+app.include_router(users_router,   prefix="/api/v1/users",   tags=["Users"])
+app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["Resumes"])
+app.include_router(matching_router, prefix="/api/v1/matching", tags=["Matching"])
+# app.include_router(jobs_router,   prefix="/api/v1/jobs",    tags=["Jobs"])
+# app.include_router(agents_router, prefix="/api/v1/agents",  tags=["Agents"])
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

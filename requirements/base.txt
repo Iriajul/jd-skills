@@ -10,7 +10,7 @@ alembic                  # Schema migrations
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 python-jose[cryptography]  # JWT creation + verification
-passlib[bcrypt]            # Password hashing
+bcrypt                     # Password hashing (used directly — passlib is unmaintained)
 
 # ─── Task Queue ───────────────────────────────────────────────────────────────
 celery[redis]            # Celery with Redis transport

@@ -41,6 +41,20 @@ services:
       - app_network
 
   # ═══════════════════════════════════════════════════════════════
+  # FRONTEND (Next.js — production standalone server)
+  # ═══════════════════════════════════════════════════════════════
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    networks:
+      - app_network
+
+  # ═══════════════════════════════════════════════════════════════
   # REVERSE PROXY
   # ═══════════════════════════════════════════════════════════════
 
@@ -55,6 +69,7 @@ services:
       - media_volume:/app/src/media
     depends_on:
       - web
+      - frontend
     networks:
       - app_network
 

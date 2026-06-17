@@ -10,10 +10,10 @@ from core.config import settings
 from core.database import Base
 
 # ── Import all models here so Alembic can detect schema changes ───────────────
-# Add each new app's models module as you build them:
-# from apps.users.models import *   # noqa: F401, F403
-# from apps.jobs.models import *    # noqa: F401, F403
-# from apps.resumes.models import * # noqa: F401, F403
+from apps.users.models import *    # noqa: F401, F403
+from apps.resumes.models import *  # noqa: F401, F403
+from apps.matching.models import *  # noqa: F401, F403
+# from apps.jobs.models import *   # noqa: F401, F403
 
 # ─────────────────────────────────────────────────────────────────────────────
 
