@@ -1,0 +1,12 @@
+# Local development image — installs deps, then runs `next dev` against the
+# live-mounted source (see docker-compose.override.yml). NOT used in production;
+# the production build lives in Dockerfile.
+FROM node:20-alpine
+WORKDIR /app
+
+# Install dependencies first so this layer is cached unless package files change.
+COPY package.json package-lock.json ./
+RUN npm install
+
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "--port", "3000", "--hostname", "0.0.0.0"]
